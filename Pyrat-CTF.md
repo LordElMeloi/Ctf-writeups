@@ -53,7 +53,7 @@ su think
 # password: _TH1NKINGPirate$_
 Then we navigated to /home/think/ and captured the user flag:
 cat user.txt
-996bdb1f619a68361417cabca5454705
+996bdb1f619a{Redacted}cabca5454705
 
 # Step 5: Exploring Application Source Code
 Inside /opt/dev/, we found a backup of an older script named pyrat.py.old. Inspecting it via git show:
@@ -119,7 +119,7 @@ We typed shell and obtained a shell with root privileges.
 
 Step 7: Capture the Flag
 cat /root/root.txt
-ba5ed03e9e74bb98054438480165e221
+ba5ed03e9e7{Redacted}80165e221
 
 Summary of Key Payloads
 • Initial shell:
@@ -130,9 +130,9 @@ password = _TH1NKINGPirate$_
 ◇ Final password: abc123
 
 ◇ User flag:
-996bdb1f619a68361417cabca5454705
+996bdb1f619{Redacted}abca5454705
 ◇ Root flag:
-ba5ed03e9e74bb98054438480165e221
+ba5ed03e9e7{Redacted}38480165e221
 
 Conclusion
 This CTF required a blend of enumeration, source code analysis, reverse shell techniques, and creative brute-forcing. The biggest breakthrough came from inspecting the Git directory, which revealed valid user credentials that helped escalate privileges and ultimately led to root.
