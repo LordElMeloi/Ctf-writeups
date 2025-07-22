@@ -1,4 +1,4 @@
-# CTF Walkthrough: elFinder Exploit & Privilege Escalation
+# CTF Walkthrough: LookUp Ctf TryHackMe
 
 ## 1. Initial Recon
 
