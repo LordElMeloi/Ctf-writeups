@@ -117,7 +117,7 @@ One endpoint `/api/fetch_messeges_from_chatbot` stood out. Sending a POST withou
 Using this:
 
 ```json
-{ "username": "${{<%[%'"}}%\." }
+{ "username": "${{<%[%'\"}}%\\." }
 ```
 
 ...revealed a **Jinja2 error**, confirming SSTI.
