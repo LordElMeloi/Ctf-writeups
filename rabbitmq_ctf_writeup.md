@@ -35,7 +35,8 @@ We added the following to our `/etc/hosts` file to access subdomains easily:
 ```
 
 Navigating to cloudsite.thm we are greeted with a landing page which has a login/signup button. Clicking it redirects to the subdomain `storage.cloudsite.thm`.
-![Landing Page](images/Rabbit_ctf_img/img1.jpg)
+
+![Landing Page](images/Rabbit_ctf_img/Img1.jpg)
 
 ---
 
