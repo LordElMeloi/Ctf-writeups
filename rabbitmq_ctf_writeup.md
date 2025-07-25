@@ -138,7 +138,7 @@ Then testing for SSTI, i used the following payload:
 ![Landing Page](images/Rabbit_ctf_img/img9.jpg)
 
 ```json
-{ "username": "${{<%[%'"}}%\." }
+{ "username": "${{<%[%'\"}}%\\." }
 ```
 
 This revealed a **Jinja2 error**, confirming SSTI.
