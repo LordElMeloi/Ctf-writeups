@@ -45,7 +45,8 @@ Navigating to cloudsite.thm we are greeted with a landing page which has a login
 There is a sign-up button; let's register an account, login and see what we can find. We are presented with a dashboard after logging in.
 
 Using Burp to intercept the request, we see a JWT token is assigned after login. Using JWT Editor, we decoded the token to be:
-![Landing Page](images/Rabbit_ctf_img/img2.jpg)
+
+![Landing Page](images/Rabbit_ctf_img/img4.jpg)
 
 ```json
 {
@@ -72,7 +73,9 @@ This gave usthe privilege we needed to access the dashboard.
 ---
 
 ## SSRF Discovery via Upload Feature
-![Landing Page](images/Rabbit_ctf_img/img3.jpg)
+
+![Landing Page](images/Rabbit_ctf_img/img5.jpg)
+
 Loking at the dashboard, we see 2 upload functions. One for uploading files from local machine and the other from a URL. Seeing this, my first thought was there may be some kind of File upload vulnerability i can exploit, so that is what i focused on.
 
 The next step was to simply try and upload a file via both methods and intercept the request. On our machine we set a host using python `python3 -m http.server 9000`
@@ -86,8 +89,11 @@ Since we are dealing with an Api, we can try fuzzing to see if we can find any h
 ```bash
 ffuf -u https://storage.cloudsite.thm/api/FUZZ -w api-endpoints.txt
 ```
+Direct access was denied (`403`). 
+
 ![Landing Page](images/Rabbit_ctf_img/img6.jpg)
-Direct access was denied (`403`). By simply navigating to the endpoint via browser we get a message saying it can only be accessed by Localhost at port 8000. Since we have confirmed SSRF can try and manipulate the server to do just that by abusing the `api/store-url` upload feature by adding the below JSON to the request body:
+
+By simply navigating to the endpoint via browser we get a message saying it can only be accessed by Localhost at port 3000. Since we have confirmed SSRF can try and manipulate the server to do just that by abusing the `api/store-url` upload feature by adding the below JSON to the request body:
 
 ```json
 { "url": "http://127.0.0.1/api/docs" }
@@ -128,7 +134,9 @@ so i added this to the request body:
 ```
 
 Then testing for SSTI, i used the following payload:
+
 ![Landing Page](images/Rabbit_ctf_img/img9.jpg)
+
 ```json
 { "username": "${{<%[%'"}}%\." }
 ```
