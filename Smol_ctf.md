@@ -46,6 +46,7 @@ Discovered common WordPress paths:
 * `/wp-login.php`
 * `/wp-content/`
 * `/wp-includes/`
+![Landing Page](images/Smol/img2.jpg)
 
 Initial brute-force attempt on `wp-login` using Hydra failed:
 
