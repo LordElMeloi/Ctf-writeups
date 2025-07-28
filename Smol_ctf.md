@@ -8,7 +8,7 @@
 
 ## Overview
 
-This CTF involved exploiting a vulnerable WordPress installation, leveraging a plugin vulnerability to achieve RCE, and conducting lateral movement and privilege escalation using exposed credentials, group memberships, and misconfigured sudo permissions.
+This CTF involved exploiting a vulnerable WordPress installation, leveraging multiple plugin vulnerabilities to achieve RCE, and conducting lateral movement and privilege escalation using exposed credentials, group memberships, and misconfigured sudo permissions.
 
 ---
 
@@ -150,8 +150,8 @@ john --wordlist=/usr/share/wordlists/rockyou.txt --format=phpass hash.txt
 
 Results:
 
-* `gege` → `sandiegocalifornia`
-* `diego` → `hero_gege@hotmail.com`
+* `gege` → `hero_gege@hotmail.com`
+* `diego` → `sandiegocalifornia`
 
 ---
 
@@ -169,7 +169,7 @@ Captured user flag:
 
 ```bash
 cat /home/diego/user.txt
-# 45edaec653ff9ee06236b7ce72b86963
+# 45edaec653{Redacted}6b7ce72b86963
 ```
 
 ---
@@ -218,7 +218,12 @@ sudo -l
 Result:
 
 ```bash
-(ALL : ALL) ALL
+[sudo] password for xavi: 
+Matching Defaults entries for xavi on ip-10-10-80-112:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User xavi may run the following commands on ip-10-10-80-112:
+    (ALL : ALL) ALL
 ```
 
 Escalated to root:
@@ -231,15 +236,15 @@ Captured root flag:
 
 ```bash
 cat /root/root.txt
-# bf89ea3ea01992353aef1f576214d4e4
+# bf89ea3ea0{Redacted}1f576214d4e4
 ```
 
 ---
 
 ## Flags
 
-* **User:** `45edaec653ff9ee06236b7ce72b86963`
-* **Root:** `bf89ea3ea01992353aef1f576214d4e4`
+* **User:** `45edaec653{Redacted}6b7ce72b86963`
+* **Root:** `bf89ea3ea0{Redacted}1f576214d4e4`
 
 ---
 
