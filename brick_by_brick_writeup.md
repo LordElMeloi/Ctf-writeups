@@ -1,7 +1,7 @@
 # 🧱 Brick by Brick — TryHackMe CTF Write-Up
 
 **Category:** Web Exploitation, Post-Exploitation, Threat Intelligence  
-**Difficulty:** Medium  
+**Difficulty:** Easy  
 **Player:** David Umoh (LordElMeloi)  
 **Platform:** TryHackMe  
 **Completion Date:** August 2025  
