@@ -23,7 +23,7 @@ echo "10.10.X.X brick.thm" | sudo tee -a /etc/hosts
 I started enumeration using Nmap:
 
 ```bash
-nmap -sC -sV -oA brickscan 10.10.X.X
+nmap -sC -sV -oA  10.10.X.X
 ```
 
 Discovered an open web server (HTTP) running WordPress.
