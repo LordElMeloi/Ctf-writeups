@@ -1,9 +1,9 @@
 # ROBOTS (THM) – Full Walkthrough & Write‑Up
 
 > **Difficulty:** Hard  
-> **Author of write‑up:** you (+ ChatGPT for editing)  
+> **Author of write‑up:** David Umoh  
 > **Date:** 2025-08-22  
-> **Tested on:** Kali/Parrot (attacker) • Ubuntu Jammy host (target) • Dockerized webapp container
+> **Tested on:** Kali (attacker) • Ubuntu Jammy host (target) • Dockerized webapp container
 
 ---
 
