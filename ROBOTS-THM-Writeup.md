@@ -99,8 +99,6 @@ After confirming callbacks, we will weaponize XSS to **exfiltrate** `server_info
 
 ## 5. Exploiting XSS for Cookie Theft
 
-![Landing Page](images/Robots/img5.jpg)
-
 Next, I created a script `xss.js` to exfiltrate cookies:
 
 ```javascript
@@ -136,6 +134,8 @@ Finally, I listened on my box:
 nc -lvnp 88
 ```
 ![Landing Page](images/Robots/img6.jpg)
+
+![Landing Page](images/Robots/img5.jpg)
 
 This gave me base64-encoded data containing cookies. After decoding with CyberChef, I retrieved a valid **admin session cookie**, & by appending the stolen cookie into my browser session, I accessed `http://robots.thm/admin.php`.
 
