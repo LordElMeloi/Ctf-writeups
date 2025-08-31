@@ -135,11 +135,10 @@ nc -lvnp 88
 ```
 ![Landing Page](images/Robots/img6.jpg)
 
-![Landing Page](images/Robots/img5.jpg)
-
 This gave me base64-encoded data containing cookies. After decoding with CyberChef, I retrieved a valid **admin session cookie**, & by appending the stolen cookie into my browser session, I accessed `http://robots.thm/admin.php`.
 
 ---
+![Landing Page](images/Robots/img5.jpg)
 
 ## 6. RFI on `admin.php` → Reverse Shell (www-data in container)
 
