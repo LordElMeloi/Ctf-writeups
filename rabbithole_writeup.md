@@ -128,6 +128,8 @@ The MariaDB `information_schema.PROCESSLIST` shows currently running
 queries. Admin's login query persisted briefly due to `SLEEP()`.\
 By exfiltrating `INFO`, we could capture the raw admin query.
 
+If an attacker can inject SQL that reads `PROCESSLIST.INFO` (or the textual column containing the running query), they can copy the running query text into a column or return it directly to the web page. That text can include sensitive items if the application forms the query with sensitive literals.
+
 Example payloads:
 
 ``` sql
