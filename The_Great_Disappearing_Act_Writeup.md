@@ -432,8 +432,8 @@ UNLOCK CODE: 7[redacted]7
                         return f"""
 
 ```
-![Landing Page](images/hopper/img19.jpg)
 The unlock code is displayed in the script, inputing it in the terminal @port 8080, unlocks and displays flag 3 THM{p[redacted]s3l}
+![Landing Page](images/hopper/img19.jpg)
 ---
 
 ## 🏁 Conclusion & Lessons Learned
