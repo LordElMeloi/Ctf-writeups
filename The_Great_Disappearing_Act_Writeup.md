@@ -51,7 +51,7 @@ nmap -sCV -p- <TARGET_IP>
 ## 🕵️ OSINT – Fakebook (Port 8000)
 
 Now navigating to the various ports especially port 8000, I find a login page, using wrapperlyzer, I found that it was running on Django. Browsing the page, I also noticed that I can create an account so that's what I did, after registering an account, I was logged in instantly.
-
+![Landing Page](images/hopper/img1.jpg)
 Now this is where we gain our first clue. Using OSINT, we are able to gather quite a lot of information.
 
 Fakebook posts contained multiple in-universe profiles. Reviewing posts revealed useful information about the character **Guard Hopkins**:
@@ -62,7 +62,7 @@ Fakebook posts contained multiple in-universe profiles. Reviewing posts revealed
 - **Pet:** johnnyboy  
 
 Going further, we even see the pattern used by the character when creating his old password:
-
+![Landing Page](images/hopper/img2.jpg)
 ```
 Pizza1234$
 ```
@@ -150,15 +150,17 @@ I got no hit. So I decided to test it out on other endpoints, mainly port 80 and
 ```bash
 hydra -l guard.hopkins@hopsecasylum.com  -P /path/to/fakebook_wordlist.txt  <TARGET_IP> -s 8080  http-post-form "/cgi-bin/login.sh:username=^USER^&password=^PASS^:Invalid username or password"  -V
 ```
+![Landing Page](images/hopper/img4.jpg)
 Boom i was successfully able to bruteforce the password for this port.
 ---
 
 ## 🔐 Flag 1 – Security Terminal (Port 8080)
+![Landing Page](images/hopper/img3.jpg)
 
 Using the brute-forced credentials, authentication succeeded on the Security Terminal @port 8080.
 
 After logging in, the interface allowed unlocking Hopper’s cell by clicking the Unlock CTA button.
-
+![Landing Page](images/hopper/img5.jpg)
 ```
 THM{h0[redacted]4d}
 ```
@@ -166,11 +168,11 @@ Observing the terminal, there seems to be 2 more parts that need to be unlocked,
 ---
 
 ## 🎥 Camera System Architecture (Ports 13400 / 13401)
-
+![Landing Page](images/hopper/img7.jpg)
 Pivoting to hunting Flag 2, I navigated to Port 13400. Using the bruteforced credentials, I gained access to the camera portal. While inspecting the camera portal, all I saw was a looping video with a single camera feed been restricted to admin user.
 
 Client-side role checks were bypassed via localStorage by changing the hop_sec role to `admin`, but the backend still enforced restrictions. Mainly the exact same dead-end video was still being displayed. I then decided to start-up burpsuite to begin deeper investigation.
-
+![Landing Page](images/hopper/img8.jpg)
 Burp Suite revealed that the camera portal (13400) is purely frontend, with logic handled by:
 
 ```
