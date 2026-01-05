@@ -330,7 +330,7 @@ It seems like a console has opened @ port 13404; the next step is to try and acc
 ## 🐚 Shell Access (Port 13404)
 
 The diagnostics console is not HTTP or WebSocket, but a raw TCP service. So I can simply connect to it using netcat:
-![Landing Page](images/hopper/img8.jpg)
+![Landing Page](images/hopper/img14.jpg)
 ```bash
 nc -v <TARGET_IP> 13404
 ```
