@@ -194,7 +194,7 @@ Authentication used a custom Bearer token.
 ```
 POST /v1/streams/request
 ```
-
+![Landing Page](images/hopper/img16.jpg)
 The `effective_tier` always returned `guard` even when `admin` was supplied in the body, but behaved differently if something like `cow` or anyother value not admin was passed in. Simply put, when the tier value = `cow`, effective_tier = `cow`, but when tier value = `admin`, effective_tier = `guard`. This shows admin is being restricted when passed in the request body. Thw next step was to find a way to make effective_tier = `admin`. Then i tried passing it as a query in the url.
 
 ### Observed Logic Flaw
@@ -223,7 +223,7 @@ And my guess was correct, i was able to gain admin privilege.
 
 ### Stream download
 I have obtained an admin ticket id, so what next, i simply pass the ticket id into the video stream to see if it works, then i used it to retrieve the manifest file
-
+![Landing Page](images/hopper/img9.jpg)
 ```json
 GET /v1/streams/39282385-67e7-4718-944a-49eaec80e669/manifest.m3u8
 ```
@@ -238,7 +238,7 @@ done
 ```
 
 The video reveals a code, inputting it into the Psych Ward Exit keycode, flag 2 part 1 is displayed.
-
+![Landing Page](images/hopper/img17.jpg)
 ```
 THM{Y0[redacted]n_}
 ```
@@ -279,6 +279,7 @@ diagnostics
 probe
 ```
 **Step 2: Probe RTSP Source**
+![Landing Page](images/hopper/img10.jpg)
 ```json
 GET /v1/ingest/probe?rtsp_url=rtsp://vendor-cam.test/cam-admin&tier=admin
 ```
@@ -295,6 +296,7 @@ a=x-job-metadata: {"SIM_EXEC": true, "note": "diagnostics"}
 ```
 
 ### Launch diagnostics job
+![Landing Page](images/hopper/img11.jpg)
 ```http
 POST /v1/ingest/diagnostics?rtsp_url=rtsp://vendor-cam.test/cam-admin&tier=admin
 ```
@@ -308,6 +310,7 @@ Response:
 ```
 
 **Step 4: Poll Job Status**
+![Landing Page](images/hopper/img12.jpg)
 ```json
 GET /v1/ingest/jobs/<UUID>
 ```
@@ -327,7 +330,7 @@ It seems like a console has opened @ port 13404; the next step is to try and acc
 ## 🐚 Shell Access (Port 13404)
 
 The diagnostics console is not HTTP or WebSocket, but a raw TCP service. So I can simply connect to it using netcat:
-
+![Landing Page](images/hopper/img8.jpg)
 ```bash
 nc -v <TARGET_IP> 13404
 ```
