@@ -195,7 +195,7 @@ Authentication used a custom Bearer token.
 POST /v1/streams/request
 ```
 ![Landing Page](images/hopper/img16.jpg)
-The `effective_tier` always returned `guard` even when `admin` was supplied in the body, but behaved differently if something like `cow` or anyother value not admin was passed in. Simply put, when the tier value = `cow`, effective_tier = `cow`, but when tier value = `admin`, effective_tier = `guard`. This shows admin is being restricted when passed in the request body. Thw next step was to find a way to make effective_tier = `admin`. Then i tried passing it as a query in the url.
+The `effective_tier` always returned `guard` even when `admin` was supplied in the body, but behaved differently if something like `cow` or any other value not admin was passed in. Simply put, when the tier value = `cow`, effective_tier = `cow`, but when tier value = `admin`, effective_tier = `guard`. This shows admin is being restricted when passed in the request body. The next step was to find a way to make effective_tier = `admin`. Then i tried passing it as a query in the url.
 
 ### Observed Logic Flaw
 - tier in JSON body is ignored  
@@ -345,7 +345,7 @@ cat /home/svc_vidops/user_part2.txt
 ## 🔼 Flag 3 – Privilege Escalation
 
 **Enumerating the target:**
-
+![Landing Page](images/hopper/img15.jpg)
 ```bash
 find / -type f -perm -04000 -ls 2>/dev/null
 ```
@@ -399,6 +399,7 @@ dockermgr@tryhackme-2404:~$ docker run --rm -it -v /:/mnt alpine chroot /mnt sh
 # 
 ```
 **Flag 3**
+![Landing Page](images/hopper/img18.jpg)
 Navigating to ```/home/ubuntu/side-quest-2```, then simply reading the scada_terminal.py file using 
 
 ```bash
@@ -431,6 +432,7 @@ UNLOCK CODE: 7[redacted]7
                         return f"""
 
 ```
+![Landing Page](images/hopper/img19.jpg)
 The unlock code is displayed in the script, inputing it in the terminal @port 8080, unlocks and displays flag 3 THM{p[redacted]s3l}
 ---
 
