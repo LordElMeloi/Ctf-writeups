@@ -1,9 +1,10 @@
 # Advent of Cyber 2025 – Side Quest 2 | Scheme Catcher – Full CTF Write-Up
 
-**Platform:** TryHackMe
-**Difficulty:** INSANE
-**Category:** Reverse Engineering | Binary Exploitation | Kernel Exploitation
-**Flags:** 4
+**Platform:** TryHackMe  
+**Difficulty:** INSANE  
+**Category:** Reverse Engineering | Binary Exploitation | Kernel Exploitation  
+**Flags:** 4  
+
 ---
 
 ## 1. Initial Reconnaissance
