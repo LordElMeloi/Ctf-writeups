@@ -38,7 +38,7 @@ At face value, the page appeared static and non‑functional, but given the chal
 Directory brute‑forcing (`ffuf`) was performed against the web server. 
 ```bash
 ffuf \                        
--u "http://10.81.159.104:9004/FUZZ" -w /usr/share/wordlists/seclists/Discovery/Web-Content/raft-large-words.txt -t 100
+-u "http://target-ip/FUZZ" -w /usr/share/wordlists/seclists/Discovery/Web-Content/raft-large-words.txt -t 100
 ```
 ```text
 dev
