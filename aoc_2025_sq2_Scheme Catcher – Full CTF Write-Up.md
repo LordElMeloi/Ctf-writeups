@@ -9,7 +9,7 @@
 
 ## 1. Initial Reconnaissance
 
-An initial `nmap` scan against the target revealed two non‑standard services of interest:
+An initial `nmap` scan against the target revealed two services of interest:
 
 ```bash
 nmap -sCV <target-ip> -p-
